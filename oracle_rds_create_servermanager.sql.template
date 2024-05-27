@@ -1,0 +1,14 @@
+/** Server Manager Database Creation Template    ******/
+/** For Amazon Oracle RDS                        ******/
+/* There are a number of substitutions that      ******/
+/* should be done by the installer. These are:   ******/
+/* @DB_NAME@ - Name of the tablespace            ******/
+/* @DB_PWD@  - The password for db user          ******/
+/******************************************************/
+
+create tablespace @DB_NAME@ datafile '@DB_NAME@.dbf' size 10M autoextend on maxsize 200M extent management local uniform size 160K;
+create user @DB_NAME@ identified by @DB_PWD@ default tablespace @DB_NAME@ temporary tablespace TEMP quota 200M on @DB_NAME@;
+grant connect to @DB_NAME@;
+grant create table to @DB_NAME@;
+
+

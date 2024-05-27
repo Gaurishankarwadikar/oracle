@@ -1,0 +1,72 @@
+#!/bin/sh
+# Unigraphics Solutions
+# File: oracle.daemon
+# Purpose:  To startup/shutdown Oracle server and database processes
+#           As shipped, this script will start the listener and database
+#           processes for Oracle 9.x.  
+#
+# *****************************************************************************
+# Revision History:
+# Date         AUTHOR                  COMMENT
+# ====         ==============          ========================================
+#
+# 03-Apr-2000  Van Nguyen              new v6.2 version
+# 03-Apr-2003  Van Nguyen              New location in CC.
+#
+# $HISTORY$
+# *****************************************************************************
+
+# Modify ORACLE_HOME to reflect the most recent version of Oracle on the
+# system.
+
+ORACLE_HOME=/usr/oracle
+export ORACLE_HOME
+
+PATH=/sbin:/usr/sbin:/usr/bin:/bin:${ORACLE_HOME}/bin
+export PATH
+
+rval=0
+set_return () {
+        x=$?
+        if [ $x -ne 0 ] ; then
+                echo "FAILURE CODE: $x"
+                rval=1
+        fi
+}
+
+case $1 in
+start_msg)
+        echo "Start Oracle processes"
+        ;;
+
+stop_msg)
+        echo "Stop Oracle processes" 
+        ;;
+
+start|"")
+	echo "Starting databases..."
+        su oracle -c $ORACLE_HOME/bin/dbstart
+        set_return
+
+	echo "Starting listener..."
+        su oracle -c "$ORACLE_HOME/bin/lsnrctl start LISTENER"
+        set_return
+        ;;
+
+stop)
+	echo "Stopping databases..."
+        su oracle -c $ORACLE_HOME/bin/dbshut
+        set_return
+
+	echo "Stopping listener..."
+        su oracle -c "$ORACLE_HOME/bin/lsnrctl stop LISTENER"
+        set_return
+        ;;
+
+*)
+        echo "usage: $0 {start|stop|start_msg|stop_msg}"
+        ;;
+
+esac
+
+exit $rval

@@ -1,0 +1,455 @@
+REM @<COPYRIGHT>@
+REM ==================================================
+REM Copyright 2014.
+REM Siemens Product Lifecycle Management Software Inc.
+REM All Rights Reserved.
+REM ==================================================
+REM @<COPYRIGHT>@
+REM
+REM UGS PLM
+REM
+REM This script upgrades the Teamcenter Global Services tables from TC8.2 to the current release
+
+ALTER TABLE gs_reactor_result
+ADD (MessageID VARCHAR2(50))
+/
+
+drop view gs_audit_log_view;
+CREATE VIEW gs_audit_log_view AS SELECT
+ gs_message_log.MessageID, DisplayName, MsgType, Publisher, ClassName, Owner, 
+ SourceAttrNames, SourceAttrValues, PublishedDate, 
+ ReceivedDate, gs_reactor_result.ResultID, 
+ gs_reactor_result.SequenceNumber, gs_reactor_result.ReactorName,
+ gs_reactor_result.DeliveredDate, gs_reactor_result.Result,
+ gs_reactor_result.ProcessedCount,
+ gs_activity_status.ActivityID,
+ gs_activity_status.StartTime, gs_activity_status.FinishTime,
+ gs_activity_status.GUID, 
+ gs_activity_status.SiteID,gs_activity_status.Status,
+ gs_activity_status.Details, gs_activity_status.Additional,
+ gs_activity_status.LogGroupId
+FROM gs_message_log, gs_reactor_result, gs_activity_status
+WHERE (gs_message_log.MessageID=gs_reactor_result.MessageID AND
+      gs_reactor_result.ResultID=gs_activity_status.ResultID AND
+      gs_reactor_result.SequenceNumber=gs_activity_status.SequenceNumber)
+/
+
+create table ODE_SCHEMA_VERSION(
+VERSION  number) 
+TABLESPACE @TBSPACE@
+/
+
+insert into ODE_SCHEMA_VERSION values (5)
+/
+
+create table BPEL_ACTIVITY_RECOVERY (
+ID number(19,0) not null, 
+PIID number(19,0), 
+AID number(19,0), 
+CHANNEL varchar2(255 char), 
+REASON varchar2(255 char), 
+DATE_TIME timestamp, 
+LDATA_ID number(19,0), 
+ACTIONS varchar2(255 char), 
+RETRIES number(10,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_CORRELATION_PROP (
+ID number(19,0) not null, 
+NAME varchar2(255 char), 
+NAMESPACE varchar2(255 char), 
+VALUE varchar2(255 char), 
+CORR_SET_ID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_CORRELATION_SET (
+ID number(19,0) not null, 
+VALUE varchar2(255 char), 
+CORR_SET_NAME varchar2(255 char), 
+SCOPE_ID number(19,0), 
+PIID number(19,0), 
+PROCESS_ID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_CORRELATOR (
+ID number(19,0) not null, 
+CID varchar2(255 char), 
+PROCESS_ID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, 
+primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_CORRELATOR_MESSAGE_CKEY (
+ID number(19,0) not null, 
+CKEY varchar2(255 char), 
+CORRELATOR_MESSAGE_ID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_EVENT (
+ID number(19,0) not null, 
+IID number(19,0), 
+PID number(19,0), 
+TSTAMP timestamp, 
+TYPE varchar2(255 char), 
+DETAIL clob, 
+LDATA_ID number(19,0), 
+SID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_FAULT (
+ID number(19,0) not null, 
+FAULTNAME varchar2(255 char), 
+LDATA_ID number(19,0), 
+EXPLANATION varchar2(4000 char), 
+LINE_NUM number(10,0), 
+AID number(10,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_INSTANCE (
+ID number(19,0) not null, 
+INSTANTIATING_CORRELATOR number(19,0), 
+FAULT number(19,0), 
+JACOB_STATE number(19,0), 
+PREVIOUS_STATE number(5,0), 
+PROCESS_ID number(19,0), 
+STATE number(5,0), 
+LAST_ACTIVE_DT timestamp, 
+SEQUENCE number(19,0), 
+FAILURE_COUNT number(10,0), 
+FAILURE_DT timestamp, 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_MESSAGE (
+ID number(19,0) not null,
+MEX number(19,0),
+TYPE varchar2(255 char), 
+DATA number(19,0), 
+HEADER number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_MESSAGE_EXCHANGE (
+ID number(19,0) not null, 
+PORT_TYPE varchar2(255 char), 
+CHANNEL_NAME varchar2(255 char), 
+CLIENTKEY varchar2(255 char), 
+LDATA_EPR_ID number(19,0), 
+LDATA_CEPR_ID number(19,0), 
+REQUEST number(19,0), 
+RESPONSE number(19,0), 
+INSERT_DT timestamp, 
+OPERATION varchar2(255 char), 
+STATE varchar2(255 char), 
+PROCESS number(19,0), 
+PIID number(19,0), 
+DIR char(1 char), 
+PLINK_MODELID number(10,0), 
+PATTERN varchar2(255 char), 
+CORR_STATUS varchar2(255 char), 
+FAULT_TYPE varchar2(255 char), 
+FAULT_EXPL varchar2(255 char), 
+CALLEE varchar2(255 char), 
+PARTNERLINK number(19,0), 
+PIPED_ID varchar2(255 char), 
+SUBSCRIBER_COUNT number(10,0),
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_MEX_PROPS (
+MEX number(19,0) not null, 
+VALUE long, 
+NAME varchar2(255 char) not null, 
+primary key (MEX, NAME))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_PLINK_VAL (
+ID number(19,0) not null, 
+PARTNER_LINK varchar2(100 char) not null, 
+PARTNERROLE varchar2(100 char), 
+MYROLE_EPR number(19,0), 
+PARTNERROLE_EPR number(19,0), 
+PROCESS number(19,0), 
+SCOPE number(19,0), 
+SVCNAME varchar2(255 char), 
+MYROLE varchar2(100 char), 
+MODELID number(10,0), 
+MYSESSIONID varchar2(255 char), 
+PARTNERSESSIONID varchar2(255 char), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_PROCESS (
+ID number(19,0) not null, 
+PROCID varchar2(255 char) not null unique, 
+deployer varchar2(255 char), 
+deploydate timestamp, 
+type_name varchar2(255 char), 
+type_ns varchar2(255 char), 
+version number(19,0), 
+ACTIVE_ number(1,0), 
+guid varchar2(255 char), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_SCOPE (
+ID number(19,0) not null, 
+PIID number(19,0), 
+PARENT_SCOPE_ID number(19,0), 
+STATE varchar2(255 char) not null,
+NAME varchar2(255 char) not null, 
+MODELID number(10,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_SELECTORS (
+ID number(19,0) not null, 
+PIID number(19,0) not null, 
+SELGRPID varchar2(255 char) not null, 
+IDX number(10,0) not null, 
+CORRELATION_KEY varchar2(255 char) not null, 
+PROC_TYPE varchar2(255 char) not null, 
+ROUTE_POLICY varchar2(255 char),
+CORRELATOR number(19,0) not null, 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, 
+primary key (ID), unique (CORRELATION_KEY, CORRELATOR))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_UNMATCHED (
+ID number(19,0) not null, 
+MEX number(19,0), 
+CORRELATION_KEY varchar2(255 char), 
+CORRELATOR number(19,0) not null, 
+INSERT_TIME timestamp,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_XML_DATA (
+ID number(19,0) not null, 
+LDATA_ID number(19,0), 
+NAME varchar2(255 char) not null, 
+SCOPE_ID number(19,0), 
+PIID number(19,0), 
+IS_SIMPLE_TYPE number(1,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table LARGE_DATA (
+ID number(19,0) not null, 
+BIN_DATA blob, 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table VAR_PROPERTY (
+ID number(19,0) not null, 
+XML_DATA_ID number(19,0), 
+PROP_VALUE varchar2(255 char), 
+PROP_NAME varchar2(255 char) not null, 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create index IDX_CORRELATOR_CID 
+on BPEL_CORRELATOR (CID)
+/
+
+create index IDX_BPEL_COR_MESSAGE_CKEY 
+on BPEL_CORRELATOR_MESSAGE_CKEY (CKEY)
+/
+
+create index IDX_SELECTOR_CORRELATOR 
+on BPEL_SELECTORS (CORRELATOR)
+/
+
+create index IDX_SELECTOR_CKEY 
+on BPEL_SELECTORS (CORRELATION_KEY)
+/
+
+create index IDX_SELECTOR_SELGRPID 
+on BPEL_SELECTORS (SELGRPID)
+/
+
+create index IDX_UNMATCHED_CKEY 
+on BPEL_UNMATCHED (CORRELATION_KEY)
+/
+
+create index IDX_UNMATCHED_CORRELATOR 
+on BPEL_UNMATCHED (CORRELATOR)
+/
+
+create sequence hibernate_sequence
+/
+
+alter table STORE_PROCESS_PROP
+add(
+PROPID   VARCHAR2(255),
+VALUE    VARCHAR2(255),
+NAME     VARCHAR2(255))
+/
+
+create index IDX_GS_ACT_STATUS_RESULTID 
+on gs_activity_status (ResultID)
+/
+
+create index IDX_GGS_ACT_STATUS_STARTTIME 
+on gs_activity_status (StartTime)
+/
+
+create index IDX_GS_ACT_STATUS_FINISHTIME 
+on gs_activity_status (FinishTime)
+/
+
+create index IDX_GS_ACT_STATUS_OWNER 
+on gs_activity_status (Owner)
+/
+
+alter table BPEL_ACTIVITY_RECOVERY add DETAILS blob
+/
+alter table BPEL_EVENT add DATA blob
+/
+alter table BPEL_FAULT add DATA blob
+/
+alter table BPEL_INSTANCE add JACOB_STATE_DATA blob
+/
+alter table BPEL_MESSAGE_EXCHANGE add ENDPOINT blob
+/
+alter table BPEL_MESSAGE_EXCHANGE add CALLBACK_ENDPOINT blob
+/
+alter table BPEL_MESSAGE add MESSAGE_DATA blob
+/
+alter table BPEL_MESSAGE add MESSAGE_HEADER blob
+/
+alter table BPEL_PLINK_VAL add MYROLE_EPR_DATA blob
+/
+alter table BPEL_PLINK_VAL add PARTNERROLE_EPR_DATA blob
+/
+alter table BPEL_XML_DATA add DATA blob
+/
+
+update BPEL_ACTIVITY_RECOVERY set DETAILS = (select BIN_DATA from LARGE_DATA where BPEL_ACTIVITY_RECOVERY.LDATA_ID = LARGE_DATA.ID)
+/
+
+update BPEL_EVENT set DATA = (select BIN_DATA from LARGE_DATA where BPEL_EVENT.LDATA_ID = LARGE_DATA.ID)
+/
+
+update BPEL_MESSAGE_EXCHANGE set ENDPOINT = (select BIN_DATA from LARGE_DATA where BPEL_MESSAGE_EXCHANGE.LDATA_EPR_ID = LARGE_DATA.ID), CALLBACK_ENDPOINT = (select BIN_DATA from LARGE_DATA where BPEL_MESSAGE_EXCHANGE.LDATA_CEPR_ID = LARGE_DATA.ID)
+/
+
+update BPEL_MESSAGE set MESSAGE_DATA = (select BIN_DATA from LARGE_DATA where BPEL_MESSAGE.DATA = LARGE_DATA.ID), MESSAGE_HEADER = (select BIN_DATA from LARGE_DATA where BPEL_MESSAGE.HEADER = LARGE_DATA.ID)
+/
+
+update BPEL_PLINK_VAL set MYROLE_EPR_DATA = (select BIN_DATA from LARGE_DATA where BPEL_PLINK_VAL.MYROLE_EPR = LARGE_DATA.ID), PARTNERROLE_EPR_DATA = (select BIN_DATA from LARGE_DATA where BPEL_PLINK_VAL.PARTNERROLE_EPR = LARGE_DATA.ID)
+/
+
+update BPEL_INSTANCE set JACOB_STATE_DATA = (select BIN_DATA from LARGE_DATA where BPEL_INSTANCE.JACOB_STATE = LARGE_DATA.ID)
+/
+
+update BPEL_FAULT set DATA = (select BIN_DATA from LARGE_DATA where BPEL_FAULT.LDATA_ID = LARGE_DATA.ID)
+/
+
+update BPEL_XML_DATA set DATA = (select BIN_DATA from LARGE_DATA where BPEL_XML_DATA.LDATA_ID = LARGE_DATA.ID)
+/
+
+update ODE_SCHEMA_VERSION set VERSION = 6
+/
+
+alter table BPEL_ACTIVITY_RECOVERY drop column LDATA_ID
+/ 
+alter table BPEL_EVENT drop column LDATA_ID
+/
+alter table BPEL_FAULT drop column LDATA_ID
+/
+alter table BPEL_INSTANCE drop column JACOB_STATE
+/
+alter table BPEL_MESSAGE_EXCHANGE drop column LDATA_EPR_ID
+/
+alter table BPEL_MESSAGE_EXCHANGE drop column LDATA_CEPR_ID
+/
+alter table BPEL_MESSAGE drop column DATA
+/
+alter table BPEL_MESSAGE drop column HEADER
+/ 
+alter table BPEL_PLINK_VAL drop column MYROLE_EPR
+/
+alter table BPEL_PLINK_VAL drop column PARTNERROLE_EPR
+/
+alter table BPEL_XML_DATA drop column LDATA_ID
+/
+
+drop table LARGE_DATA purge
+/
+
+alter table BPEL_XML_DATA add SIMPLE_VALUE varchar2(255)
+/
+
+create table ODE_JOB_BAK TABLESPACE @TBSPACE@ as select * from ODE_JOB 
+/
+alter table ODE_JOB add instanceId number(37)
+/
+alter table ODE_JOB add mexId varchar(255)
+/
+alter table ODE_JOB add processId varchar(255)
+/
+alter table ODE_JOB add type varchar(255)
+/
+alter table ODE_JOB add channel varchar(255)
+/
+alter table ODE_JOB add correlatorId varchar(255)
+/
+alter table ODE_JOB add correlationKeySet varchar(255)
+/
+alter table ODE_JOB add retryCount int
+/
+alter table ODE_JOB add inMem int
+/
+alter table ODE_JOB add priority int
+/
+alter table ODE_JOB add detailsExt blob
+/
+update ODE_JOB oj set detailsExt = (select details from ODE_JOB where jobid = oj.jobid)
+/
+alter table ODE_JOB drop column details
+/
+create sequence HIBERNATE_SEQHILO
+/

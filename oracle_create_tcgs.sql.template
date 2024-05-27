@@ -1,0 +1,842 @@
+REM @<COPYRIGHT>@
+REM ==================================================
+REM Copyright 2014.
+REM Siemens Product Lifecycle Management Software Inc.
+REM All Rights Reserved.
+REM ==================================================
+REM @<COPYRIGHT>@
+REM
+REM UGS PLM
+REM
+REM File: oracle_create_tcgs.sql
+REM
+REM ****************************************************************************
+REM Revision    History:
+REM Date        Author         Comment
+REM =========   ======         =================================================
+REM 06-Jan-06   Shahji Dhole    Initial.
+REM 06-Oct-04	Katrina Robinson	Format for readability
+REM 21-Mar-07   Jonas Carlsson  Added gs_logs.
+REM 19-Aug-09   Katrina Robinson  Added ODE tables.
+REM
+REM ****************************************************************************
+
+REM This script creates the Teamcenter Global Services tables.
+
+REM ************ These tables will be in their own tablespace ***************
+
+
+CREATE TABLE gs_runtime_resources(
+resource_id      VARCHAR2(200) not null,
+data             BLOB          not null,
+original_xml     BLOB)
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE gs_reactor_result (
+MessageID        VARCHAR2(50),
+ResultID         VARCHAR2(50),
+ReactorName      VARCHAR2(100), 
+DeliveredDate    VARCHAR2(40), 
+SequenceNumber   VARCHAR2(10), 
+Result           VARCHAR2(100), 
+ProcessedCount   VARCHAR2(100))
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE gs_message_log (
+MessageID        VARCHAR2(50),
+DisplayName      VARCHAR2(200),
+MsgType          VARCHAR2(200),
+Publisher        VARCHAR2(200),
+PublishedDate    VARCHAR2(40),
+ReceivedDate     VARCHAR2(40),
+ClassName        VARCHAR2(30),
+SourceAttrNames  VARCHAR2(100),
+SourceAttrValues VARCHAR2(100),
+Additional       CLOB)
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE gs_activity_status (
+ResultID         VARCHAR2(50),
+SequenceNumber   VARCHAR2(10),
+ActivityID       VARCHAR2(200), 
+StartTime        VARCHAR2(40), 
+FinishTime       VARCHAR2(40), 
+GUID             VARCHAR2(40), 
+Owner            VARCHAR2(200), 
+SiteID           VARCHAR2(100), 
+Status           VARCHAR2(100), 
+Details          CLOB, 
+Additional       CLOB,
+LogGroupId       VARCHAR2(50))
+TABLESPACE @TBSPACE@
+/
+
+create index IDX_GS_ACT_STATUS_RESULTID 
+on gs_activity_status (ResultID)
+/
+
+create index IDX_GGS_ACT_STATUS_STARTTIME 
+on gs_activity_status (StartTime)
+/
+
+create index IDX_GS_ACT_STATUS_FINISHTIME 
+on gs_activity_status (FinishTime)
+/
+
+create index IDX_GS_ACT_STATUS_OWNER 
+on gs_activity_status (Owner)
+/
+
+CREATE TABLE gs_abort_request (
+MessageID        VARCHAR2(50),
+Requestor        VARCHAR2(200), 
+RequestDate      VARCHAR2(40),
+Status           VARCHAR2(100),
+Additional       CLOB)
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE gs_logs (
+LogGroupId       VARCHAR2(50) not null,
+LogData          CLOB not null)
+TABLESPACE @TBSPACE@
+/
+
+CREATE VIEW gs_audit_log_view AS SELECT
+ gs_message_log.MessageID, DisplayName, MsgType, Publisher, ClassName, Owner, 
+ SourceAttrNames, SourceAttrValues, PublishedDate, 
+ ReceivedDate, gs_reactor_result.ResultID, 
+ gs_reactor_result.SequenceNumber, gs_reactor_result.ReactorName,
+ gs_reactor_result.DeliveredDate, gs_reactor_result.Result,
+ gs_reactor_result.ProcessedCount,
+ gs_activity_status.ActivityID,
+ gs_activity_status.StartTime, gs_activity_status.FinishTime,
+ gs_activity_status.GUID, 
+ gs_activity_status.SiteID,gs_activity_status.Status,
+ gs_activity_status.Details, gs_activity_status.Additional,
+ gs_activity_status.LogGroupId
+FROM gs_message_log, gs_reactor_result, gs_activity_status
+WHERE (gs_message_log.MessageID=gs_reactor_result.MessageID AND
+      gs_reactor_result.ResultID=gs_activity_status.ResultID AND
+      gs_reactor_result.SequenceNumber=gs_activity_status.SequenceNumber)
+/
+
+CREATE TABLE gs_data_object (
+ID       INTEGER PRIMARY KEY,
+Name     VARCHAR2(255),
+Source   VARCHAR2(255))
+TABLESPACE @TBSPACE@
+/
+
+CREATE SEQUENCE gs_data_object_seq
+START WITH 1
+INCREMENT BY 1
+NOMAXVALUE
+/
+
+CREATE TRIGGER gs_data_object_trigger
+BEFORE INSERT ON gs_data_object
+FOR EACH ROW
+BEGIN
+SELECT gs_data_object_seq.nextval into :new.ID from DUAL;
+END;
+/
+
+CREATE TABLE gs_attribute (
+ID      INTEGER PRIMARY KEY,
+Name          VARCHAR2(255),
+DataObjectID  INTEGER,
+Data          VARCHAR2(255),
+Type          VARCHAR2(10),
+SegmentName   VARCHAR2(255),
+CONSTRAINT DOIDREF FOREIGN KEY (DataObjectID) REFERENCES gs_data_object(ID) ON DELETE CASCADE)
+TABLESPACE @TBSPACE@
+/
+
+CREATE SEQUENCE gs_attribute_seq
+START WITH 1
+INCREMENT BY 1
+NOMAXVALUE
+/
+
+CREATE TRIGGER gs_attribute_trigger
+BEFORE INSERT ON gs_attribute
+FOR EACH ROW
+BEGIN
+SELECT gs_attribute_seq.nextval into :new.ID from DUAL;
+END;
+/
+
+CREATE TABLE ODE_ACTIVITY_RECOVERY (
+ID NUMBER NOT NULL, 
+ACTIONS VARCHAR2(255), 
+ACTIVITY_ID NUMBER, 
+CHANNEL VARCHAR2(255), 
+DATE_TIME TIMESTAMP, 
+DETAILS CLOB, 
+REASON VARCHAR2(255), 
+RETRIES NUMBER, 
+INSTANCE_ID NUMBER, 
+PRIMARY KEY (ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_CORRELATION_SET (
+CORRELATION_SET_ID NUMBER NOT NULL, 
+CORRELATION_KEY VARCHAR2(255), 
+NAME VARCHAR2(255), 
+SCOPE_ID NUMBER, 
+PRIMARY KEY (CORRELATION_SET_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_CORRELATOR (
+CORRELATOR_ID NUMBER NOT NULL, 
+CORRELATOR_KEY VARCHAR2(255), 
+PROC_ID NUMBER, 
+PRIMARY KEY (CORRELATOR_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_CORSET_PROP (
+ID NUMBER NOT NULL, 
+PROP_KEY VARCHAR2(255), 
+PROP_VALUE VARCHAR2(255), 
+CORRSET_ID NUMBER, 
+PRIMARY KEY (ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_EVENT (
+EVENT_ID NUMBER NOT NULL, 
+DETAIL VARCHAR2(255), 
+DATA BLOB, 
+SCOPE_ID NUMBER, 
+TSTAMP TIMESTAMP, 
+TYPE VARCHAR2(255), 
+INSTANCE_ID NUMBER, 
+PROCESS_ID NUMBER, 
+PRIMARY KEY (EVENT_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_FAULT (
+FAULT_ID NUMBER NOT NULL, 
+ACTIVITY_ID NUMBER, 
+DATA CLOB, 
+MESSAGE VARCHAR2(4000), 
+LINE_NUMBER NUMBER, 
+NAME VARCHAR2(255), 
+PRIMARY KEY (FAULT_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_MESSAGE (
+MESSAGE_ID NUMBER NOT NULL, 
+DATA CLOB, 
+HEADER CLOB, 
+TYPE VARCHAR2(255), 
+PRIMARY KEY (MESSAGE_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_MESSAGE_EXCHANGE (
+MESSAGE_EXCHANGE_ID VARCHAR2(255) NOT NULL, 
+ACK_TYPE VARCHAR2(255), 
+CALLEE VARCHAR2(255), 
+CHANNEL VARCHAR2(255), 
+CORRELATION_ID VARCHAR2(255), 
+CORRELATION_KEYS VARCHAR2(255), 
+CORRELATION_STATUS VARCHAR2(255), 
+CREATE_TIME TIMESTAMP NOT NULL, 
+DIRECTION NUMBER NOT NULL, 
+EPR CLOB, 
+FAILURE_TYPE VARCHAR2(255), 
+FAULT VARCHAR2(255), 
+FAULT_EXPLANATION VARCHAR2(255), 
+ISTYLE VARCHAR2(255), 
+OPERATION VARCHAR2(255) NOT NULL, 
+PARTNER_LINK_MODEL_ID NUMBER NOT NULL, 
+PATTERN VARCHAR2(255) NOT NULL, 
+PIPED_ID VARCHAR2(255), 
+PIPED_PID VARCHAR2(255), 
+PORT_TYPE VARCHAR2(255), 
+PROPAGATE_TRANS NUMBER, 
+STATUS VARCHAR2(255), 
+TIMEOUT NUMBER, 
+CORRELATOR NUMBER, 
+PLINK NUMBER, 
+PROCESS NUMBER, 
+INSTANCE NUMBER, 
+REQUEST NUMBER, 
+RESPONSE NUMBER, 
+PRIMARY KEY (MESSAGE_EXCHANGE_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_MESSAGE_ROUTE (
+MESSAGE_ROUTE_ID NUMBER NOT NULL, 
+CORRELATION_KEY VARCHAR2(255), 
+GROUP_ID VARCHAR2(255), 
+ROUTE_INDEX NUMBER, 
+CORR_ID NUMBER, 
+PROCESS_INSTANCE_ID NUMBER, 
+PRIMARY KEY (MESSAGE_ROUTE_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_MEX_PROP (
+ID NUMBER NOT NULL, 
+PROP_KEY VARCHAR2(255), 
+PROP_VALUE VARCHAR2(2000), 
+MEX_ID VARCHAR2(255), 
+PRIMARY KEY (ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_PARTNER_LINK (
+PARTNER_LINK_ID NUMBER NOT NULL, 
+MY_EPR CLOB, 
+MY_ROLE_NAME VARCHAR2(255), 
+MY_ROLE_SERVICE_NAME VARCHAR2(255), 
+MY_SESSION_ID VARCHAR2(255), 
+PARTNER_EPR CLOB, 
+PARTNER_LINK_MODEL_ID NUMBER, 
+PARTNER_LINK_NAME VARCHAR2(255), 
+PARTNER_ROLE_NAME VARCHAR2(255), 
+PARTNER_SESSION_ID VARCHAR2(255), 
+SCOPE_ID NUMBER, 
+PRIMARY KEY (PARTNER_LINK_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_PROCESS (
+ID NUMBER NOT NULL, 
+GUID VARCHAR2(255), 
+PROCESS_ID VARCHAR2(255), 
+PROCESS_TYPE VARCHAR2(255), 
+VERSION NUMBER, PRIMARY KEY (ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_PROCESS_INSTANCE (
+ID NUMBER NOT NULL, 
+DATE_CREATED TIMESTAMP, 
+EXEC_STATE_COUNTER NUMBER, 
+EXECUTION_STATE BLOB, 
+LAST_ACTIVE_TIME TIMESTAMP, 
+LAST_RECOVERY_DATE TIMESTAMP, 
+PREVIOUS_STATE NUMBER, 
+SEQUENCE NUMBER, 
+INSTANCE_STATE NUMBER, 
+FAULT_ID NUMBER, 
+INSTANTIATING_CORRELATOR_ID NUMBER, 
+PROCESS_ID NUMBER, 
+ROOT_SCOPE_ID NUMBER, 
+PRIMARY KEY (ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_SCOPE (
+SCOPE_ID NUMBER NOT NULL, 
+MODEL_ID NUMBER, 
+SCOPE_NAME VARCHAR2(255), 
+SCOPE_STATE VARCHAR2(255), 
+PARENT_SCOPE_ID NUMBER, 
+PROCESS_INSTANCE_ID NUMBER, 
+PRIMARY KEY (SCOPE_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_XML_DATA (
+XML_DATA_ID NUMBER NOT NULL, 
+DATA CLOB, 
+IS_SIMPLE_TYPE NUMBER, 
+NAME VARCHAR2(255), 
+SCOPE_ID NUMBER, 
+PRIMARY KEY (XML_DATA_ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE ODE_XML_DATA_PROP (
+ID NUMBER NOT NULL, 
+PROP_KEY VARCHAR2(255), 
+PROP_VALUE VARCHAR2(255), 
+XML_DATA_ID NUMBER, 
+PRIMARY KEY (ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE OPENJPA_SEQUENCE_TABLE (
+ID NUMBER NOT NULL, 
+SEQUENCE_VALUE NUMBER, 
+PRIMARY KEY (ID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE STORE_DU (
+NAME VARCHAR2(255) NOT NULL, 
+DEPLOYDT TIMESTAMP, 
+DEPLOYER VARCHAR2(255), 
+DIR VARCHAR2(255), 
+PRIMARY KEY (NAME)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE STORE_PROCESS (
+PID VARCHAR2(255) NOT NULL, 
+STATE VARCHAR2(255), 
+TYPE VARCHAR2(255), 
+VERSION NUMBER, 
+DU VARCHAR2(255), 
+PRIMARY KEY (PID)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE STORE_PROCESS_PROP (
+id NUMBER NOT NULL, 
+PROP_KEY VARCHAR2(255), 
+PROP_VAL VARCHAR2(255), 
+PROPID   VARCHAR2(255),
+VALUE    VARCHAR2(255),
+NAME     VARCHAR2(255),
+PRIMARY KEY (id)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE STORE_PROC_TO_PROP (
+ProcessConfDaoImpl_PID VARCHAR2(255), 
+element_id NUMBER) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE TABLE STORE_VERSIONS (
+id NUMBER NOT NULL, 
+VERSION NUMBER, 
+PRIMARY KEY (id)) 
+TABLESPACE @TBSPACE@
+/
+
+CREATE INDEX I_D_CTVRY_INSTANCE 
+ON ODE_ACTIVITY_RECOVERY (INSTANCE_ID)
+/
+
+CREATE INDEX I_D_CR_ST_SCOPE 
+ON ODE_CORRELATION_SET (SCOPE_ID)
+/
+
+CREATE INDEX I_D_CRLTR_PROCESS 
+ON ODE_CORRELATOR (PROC_ID)
+/
+
+CREATE INDEX I_D_CRPRP_CORRSET 
+ON ODE_CORSET_PROP (CORRSET_ID)
+/
+
+CREATE INDEX I_OD_VENT_INSTANCE 
+ON ODE_EVENT (INSTANCE_ID)
+/
+
+CREATE INDEX I_OD_VENT_PROCESS 
+ON ODE_EVENT (PROCESS_ID)
+/
+
+CREATE INDEX I_D_MSHNG_CORRELATOR 
+ON ODE_MESSAGE_EXCHANGE (CORRELATOR)
+/
+
+CREATE INDEX I_D_MSHNG_PARTNERLINK 
+ON ODE_MESSAGE_EXCHANGE (PLINK)
+/
+
+CREATE INDEX I_D_MSHNG_PROCESS 
+ON ODE_MESSAGE_EXCHANGE (PROCESS)
+/
+
+CREATE INDEX I_D_MSHNG_PROCESSINST 
+ON ODE_MESSAGE_EXCHANGE (INSTANCE)
+/
+
+CREATE INDEX I_D_MSHNG_REQUEST 
+ON ODE_MESSAGE_EXCHANGE (REQUEST)
+/
+
+CREATE INDEX I_D_MSHNG_RESPONSE 
+ON ODE_MESSAGE_EXCHANGE (RESPONSE)
+/
+
+CREATE INDEX I_D_MS_RT_CORRELATOR 
+ON ODE_MESSAGE_ROUTE (CORR_ID)
+/
+
+CREATE INDEX I_D_MS_RT_PROCESSINST 
+ON ODE_MESSAGE_ROUTE (PROCESS_INSTANCE_ID)
+/
+
+CREATE INDEX I_D_MXPRP_MEX 
+ON ODE_MEX_PROP (MEX_ID)
+/
+
+CREATE INDEX I_D_PRLNK_SCOPE 
+ON ODE_PARTNER_LINK (SCOPE_ID)
+/
+
+CREATE INDEX I_D_PRTNC_FAULT 
+ON ODE_PROCESS_INSTANCE (FAULT_ID)
+/
+
+CREATE INDEX I_D_PRTNC_INSTANTIATINGCORRELA 
+ON ODE_PROCESS_INSTANCE (INSTANTIATING_CORRELATOR_ID)
+/
+
+CREATE INDEX I_D_PRTNC_PROCESS 
+ON ODE_PROCESS_INSTANCE (PROCESS_ID)
+/
+
+CREATE INDEX I_D_PRTNC_ROOTSCOPE 
+ON ODE_PROCESS_INSTANCE (ROOT_SCOPE_ID)
+/
+
+CREATE INDEX I_OD_SCOP_PARENTSCOPE 
+ON ODE_SCOPE (PARENT_SCOPE_ID)
+/
+
+CREATE INDEX I_OD_SCOP_PROCESSINSTANCE 
+ON ODE_SCOPE (PROCESS_INSTANCE_ID)
+/
+
+CREATE INDEX I_D_XM_DT_SCOPE 
+ON ODE_XML_DATA (SCOPE_ID)
+/
+
+CREATE INDEX I_D_XMPRP_XMLDATA 
+ON ODE_XML_DATA_PROP (XML_DATA_ID)
+/
+
+CREATE INDEX I_STR_CSS_DU 
+ON STORE_PROCESS (DU)
+/
+
+CREATE INDEX I_STR_PRP_ELEMENT 
+ON STORE_PROC_TO_PROP (element_id)
+/
+
+CREATE INDEX I_STR_PRP_PROCESSCONFDAOIMPL_P 
+ON STORE_PROC_TO_PROP (ProcessConfDaoImpl_PID)
+/
+
+CREATE TABLE ODE_JOB (
+jobid varchar2(64 char) DEFAULT '' NOT NULL, 
+ts number(19,0) DEFAULT 0 NOT NULL, 
+nodeid varchar2(64 char) NULL, 
+scheduled number(12,0) DEFAULT 0 NOT NULL, 
+transacted number(12,0) DEFAULT 0 NOT NULL, 
+instanceId number(37),
+mexId varchar(255),
+processId varchar(255),
+type varchar(255),
+channel varchar(255),
+correlatorId varchar(255),
+correlationKeySet varchar(255),
+retryCount int,
+inMem int,
+priority int,
+detailsExt blob,
+PRIMARY KEY(jobid))
+TABLESPACE @TBSPACE@
+/
+
+CREATE INDEX IDX_ODE_JOB_TS 
+ON ode_job(ts)
+/
+
+CREATE INDEX IDX_ODE_JOB_NODEID 
+ON ode_job(nodeid)
+/
+
+
+create table ODE_SCHEMA_VERSION(
+VERSION  number) 
+TABLESPACE @TBSPACE@
+/
+
+insert into ODE_SCHEMA_VERSION values (6)
+/
+
+create table BPEL_ACTIVITY_RECOVERY (
+ID number(19,0) not null, 
+PIID number(19,0), 
+AID number(19,0), 
+CHANNEL varchar2(255 char), 
+REASON varchar2(255 char), 
+DATE_TIME timestamp, 
+ACTIONS varchar2(255 char), 
+RETRIES number(10,0), 
+INSERT_TIME timestamp, 
+DETAILS blob,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_CORRELATION_PROP (
+ID number(19,0) not null, 
+NAME varchar2(255 char), 
+NAMESPACE varchar2(255 char), 
+VALUE varchar2(255 char), 
+CORR_SET_ID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_CORRELATION_SET (
+ID number(19,0) not null, 
+VALUE varchar2(255 char), 
+CORR_SET_NAME varchar2(255 char), 
+SCOPE_ID number(19,0), 
+PIID number(19,0), 
+PROCESS_ID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_CORRELATOR (
+ID number(19,0) not null, 
+CID varchar2(255 char), 
+PROCESS_ID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, 
+primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_CORRELATOR_MESSAGE_CKEY (
+ID number(19,0) not null, 
+CKEY varchar2(255 char), 
+CORRELATOR_MESSAGE_ID number(19,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_EVENT (
+ID number(19,0) not null, 
+IID number(19,0), 
+PID number(19,0), 
+TSTAMP timestamp, 
+TYPE varchar2(255 char), 
+DETAIL clob, 
+SID number(19,0), 
+INSERT_TIME timestamp, 
+DATA blob,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_FAULT (
+ID number(19,0) not null, 
+FAULTNAME varchar2(255 char), 
+EXPLANATION varchar2(4000 char), 
+LINE_NUM number(10,0), 
+AID number(10,0), 
+INSERT_TIME timestamp, 
+DATA blob,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_INSTANCE (
+ID number(19,0) not null, 
+INSTANTIATING_CORRELATOR number(19,0), 
+FAULT number(19,0), 
+PREVIOUS_STATE number(5,0), 
+PROCESS_ID number(19,0), 
+STATE number(5,0), 
+LAST_ACTIVE_DT timestamp, 
+SEQUENCE number(19,0), 
+FAILURE_COUNT number(10,0), 
+FAILURE_DT timestamp, 
+INSERT_TIME timestamp, 
+JACOB_STATE_DATA blob,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_MESSAGE (
+ID number(19,0) not null,
+MEX number(19,0),
+TYPE varchar2(255 char), 
+INSERT_TIME timestamp, 
+MESSAGE_DATA blob,
+MESSAGE_HEADER blob,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_MESSAGE_EXCHANGE (
+ID number(19,0) not null, 
+PORT_TYPE varchar2(255 char), 
+CHANNEL_NAME varchar2(255 char), 
+CLIENTKEY varchar2(255 char), 
+REQUEST number(19,0), 
+RESPONSE number(19,0), 
+INSERT_DT timestamp, 
+OPERATION varchar2(255 char), 
+STATE varchar2(255 char), 
+PROCESS number(19,0), 
+PIID number(19,0), 
+DIR char(1 char), 
+PLINK_MODELID number(10,0), 
+PATTERN varchar2(255 char), 
+CORR_STATUS varchar2(255 char), 
+FAULT_TYPE varchar2(255 char), 
+FAULT_EXPL varchar2(255 char), 
+CALLEE varchar2(255 char), 
+PARTNERLINK number(19,0), 
+PIPED_ID varchar2(255 char), 
+SUBSCRIBER_COUNT number(10,0),
+INSERT_TIME timestamp, 
+ENDPOINT blob,
+CALLBACK_ENDPOINT blob,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_MEX_PROPS (
+MEX number(19,0) not null, 
+VALUE long, 
+NAME varchar2(255 char) not null, 
+primary key (MEX, NAME))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_PLINK_VAL (
+ID number(19,0) not null, 
+PARTNER_LINK varchar2(100 char) not null, 
+PARTNERROLE varchar2(100 char), 
+PROCESS number(19,0), 
+SCOPE number(19,0), 
+SVCNAME varchar2(255 char), 
+MYROLE varchar2(100 char), 
+MODELID number(10,0), 
+MYSESSIONID varchar2(255 char), 
+PARTNERSESSIONID varchar2(255 char), 
+INSERT_TIME timestamp, 
+MYROLE_EPR_DATA blob,
+PARTNERROLE_EPR_DATA blob,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_PROCESS (
+ID number(19,0) not null, 
+PROCID varchar2(255 char) not null unique, 
+deployer varchar2(255 char), 
+deploydate timestamp, 
+type_name varchar2(255 char), 
+type_ns varchar2(255 char), 
+version number(19,0), 
+ACTIVE_ number(1,0), 
+guid varchar2(255 char), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_SCOPE (
+ID number(19,0) not null, 
+PIID number(19,0), 
+PARENT_SCOPE_ID number(19,0), 
+STATE varchar2(255 char) not null,
+NAME varchar2(255 char) not null, 
+MODELID number(10,0), 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_SELECTORS (
+ID number(19,0) not null, 
+PIID number(19,0) not null, 
+SELGRPID varchar2(255 char) not null, 
+IDX number(10,0) not null, 
+CORRELATION_KEY varchar2(255 char) not null, 
+PROC_TYPE varchar2(255 char) not null, 
+ROUTE_POLICY varchar2(255 char),
+CORRELATOR number(19,0) not null, 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, 
+primary key (ID), unique (CORRELATION_KEY, CORRELATOR))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_UNMATCHED (
+ID number(19,0) not null, 
+MEX number(19,0), 
+CORRELATION_KEY varchar2(255 char), 
+CORRELATOR number(19,0) not null, 
+INSERT_TIME timestamp,
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table BPEL_XML_DATA (
+ID number(19,0) not null, 
+NAME varchar2(255 char) not null, 
+SCOPE_ID number(19,0), 
+PIID number(19,0), 
+IS_SIMPLE_TYPE number(1,0), 
+INSERT_TIME timestamp, 
+DATA blob,
+SIMPLE_VALUE varchar2(255),
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create table VAR_PROPERTY (
+ID number(19,0) not null, 
+XML_DATA_ID number(19,0), 
+PROP_VALUE varchar2(255 char), 
+PROP_NAME varchar2(255 char) not null, 
+INSERT_TIME timestamp, 
+MLOCK number(10,0) not null, primary key (ID))
+TABLESPACE @TBSPACE@
+/
+
+create index IDX_CORRELATOR_CID 
+on BPEL_CORRELATOR (CID)
+/
+
+create index IDX_BPEL_COR_MESSAGE_CKEY 
+on BPEL_CORRELATOR_MESSAGE_CKEY (CKEY)
+/
+
+create index IDX_SELECTOR_CORRELATOR 
+on BPEL_SELECTORS (CORRELATOR)
+/
+
+create index IDX_SELECTOR_CKEY 
+on BPEL_SELECTORS (CORRELATION_KEY)
+/
+
+create index IDX_SELECTOR_SELGRPID 
+on BPEL_SELECTORS (SELGRPID)
+/
+
+create index IDX_UNMATCHED_CKEY 
+on BPEL_UNMATCHED (CORRELATION_KEY)
+/
+
+create index IDX_UNMATCHED_CORRELATOR 
+on BPEL_UNMATCHED (CORRELATOR)
+/
+
+create sequence hibernate_sequence
+/
+
+create sequence HIBERNATE_SEQHILO
+/

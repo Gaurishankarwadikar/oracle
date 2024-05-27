@@ -1,0 +1,16 @@
+/** Server Manager Database Creation Templates   ******/
+/* There are a number of substitutions that      ******/
+/* should be done by the installer. These are:   ******/
+/* @DB_NAME@ - Name of the tablespace            ******/
+/* @DB_USER@ - The database user                 ******/
+/* @DB_PATH@ - Path to the directory the data    ******/
+/*             file will reside                  ******/
+/* @DB_PWD@  - The password for db user          ******/
+/******************************************************/
+
+create tablespace @DB_NAME@ datafile '@DB_PATH@/@DB_NAME@.dbf' size 10M autoextend on maxsize 200M extent management local uniform size 160K;
+create user @DB_USER@ identified by @DB_PWD@ default tablespace @DB_NAME@ temporary tablespace TEMP quota 200M on @DB_NAME@;
+grant connect to @DB_USER@;
+grant create table to @DB_USER@;
+
+
