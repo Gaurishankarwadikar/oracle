@@ -522,6 +522,12 @@ CMD [ "/bin/bash", "-c", "exec $ORACLE_BASE/$RUN_FILE" ]
 
 
 
+# Create a new database
+RUN cd $ORACLE_HOME/assistants/dbca && \
+    ./dbca -silent -createDatabase -gdbName tc -sid tc -templateName General_Purpose.dbc -sysPassword oracle -datafileDestination /opt/oracle
+
+
+
 
 
 
