@@ -526,7 +526,16 @@ CMD [ "/bin/bash", "-c", "exec $ORACLE_BASE/$RUN_FILE" ]
 RUN cd $ORACLE_HOME/assistants/dbca && \
     ./dbca -silent -createDatabase -gdbName tc -sid tc -templateName General_Purpose.dbc -sysPassword oracle -datafileDestination /opt/oracle
 
-
+# Run group creation commands
+RUN groupadd --gid 54321 oinstall && \
+    groupadd --gid 54322 dba && \
+    groupadd --gid 54323 asmdba && \
+    groupadd --gid 54324 asmoper && \
+    groupadd --gid 54325 asmadmin && \
+    groupadd --gid 54326 oper && \
+    groupadd --gid 54327 backupdba && \
+    groupadd --gid 54328 dgdba && \
+    groupadd --gid 54329 kmdba
 
 
 
